@@ -7,87 +7,52 @@ export interface Company {
   updated_at: Date
 }
 
-export interface Questionnaire {
-  id: string
-  title: string
-  description: string | null
-  company_id: string
-  is_active: boolean
-  created_at: Date
-  updated_at: Date
-  company?: Company
-  stages?: Stage[]
-}
-
-export interface Stage {
-  id: string
-  title: string
-  description: string | null
-  order_index: number
-  questionnaire_id: string
-  created_at: Date
-  questions?: Question[]
-}
-
-export interface Question {
-  id: string
-  text: string
-  order_index: number
-  stage_id: string
-  created_at: Date
-}
-
-export interface Participant {
-  id: string
-  name: string
-  email: string
-  role: string | null
-  company_id: string
-  created_at: Date
-  updated_at: Date
-  company?: Company
-}
-
-export interface Evaluation {
-  id: string
-  questionnaire_id: string
-  evaluator_id: string
-  evaluated_id: string
-  status: 'pending' | 'in_progress' | 'completed'
-  completed_at: Date | null
-  created_at: Date
-  questionnaire?: Questionnaire
-  evaluator?: Participant
-  evaluated?: Participant
-  response_token?: ResponseToken
-}
-
-export interface ResponseToken {
-  id: string
-  token: string
-  evaluation_id: string
-  expires_at: Date
-  used_at: Date | null
-  created_at: Date
-  evaluation?: Evaluation
-}
-
-export interface Answer {
-  id: string
-  evaluation_id: string
-  question_id: string
-  score: number
-  comment: string | null
-  created_at: Date
-  question?: Question
-}
-
 export interface AdminUser {
   id: string
   name: string
   email: string
+  role: 'super_admin' | 'area_admin'
+  area_id: string | null
   created_at: Date
   updated_at: Date
+}
+
+export interface Area {
+  id: string
+  name: string
+  order_index: number
+  created_at: Date
+}
+
+export interface CompanyArea {
+  company_id: string
+  area_id: string
+}
+
+export interface AreaQuestion {
+  id: string
+  area_id: string
+  text: string
+  order_index: number
+  created_at: Date
+}
+
+export interface Evaluation {
+  id: string
+  company_id: string
+  area_id: string
+  admin_user_id: string
+  status: 'in_progress' | 'completed'
+  completed_at: Date | null
+  created_at: Date
+}
+
+export interface EvaluationAnswer {
+  id: string
+  evaluation_id: string
+  question_id: string
+  score: number | null
+  comment: string | null
 }
 
 // Consolidation types

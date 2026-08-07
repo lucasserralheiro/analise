@@ -4,7 +4,7 @@ import { sql } from '@/lib/db'
 // GET: inspeciona colunas de tabelas chave
 export async function GET() {
   try {
-    const tables = ['stages', 'questions', 'questionnaire_questions', 'answers', 'company_evaluators']
+    const tables = ['areas', 'company_areas', 'area_questions', 'evaluations', 'evaluation_answers', 'admin_users']
     const result: Record<string, string[]> = {}
 
     for (const table of tables) {
@@ -23,145 +23,114 @@ export async function GET() {
   }
 }
 
-// POST: roda migrations seguras (ADD COLUMN IF NOT EXISTS)
+// POST: roda migrations seguras (ADD COLUMN IF NOT EXISTS / CREATE TABLE IF NOT EXISTS)
 export async function POST() {
   const migrations: string[] = []
   const errors: string[] = []
 
-  // ── stages: garantir order_index ──
+  // ── remove o modelo antigo de avaliador por token (sem dados a preservar) ──
+  // Precisa rodar ANTES de criar as tabelas novas: "evaluations" já existia no
+  // schema antigo (com id TEXT, evaluator_id/evaluated_id/questionnaire_id) e
+  // colidia com a tabela nova (id UUID) — CASCADE cuida de quem referenciava
+  // evaluations.id/answers.id.
   try {
-    await sql`ALTER TABLE stages ADD COLUMN IF NOT EXISTS order_index INTEGER DEFAULT 0`
-    migrations.push('stages.order_index OK')
-  } catch (e) { errors.push(`stages.order_index: ${e}`) }
+    await sql`DROP TABLE IF EXISTS survey_answers`
+    await sql`DROP TABLE IF EXISTS response_tokens`
+    await sql`DROP TABLE IF EXISTS answers CASCADE`
+    await sql`DROP TABLE IF EXISTS evaluations CASCADE`
+    await sql`DROP TABLE IF EXISTS company_evaluators`
+    await sql`DROP TABLE IF EXISTS company_question_questions`
+    await sql`DROP TABLE IF EXISTS company_questionnaires`
+    await sql`DROP TABLE IF EXISTS participants`
+    await sql`DROP TABLE IF EXISTS stages CASCADE`
+    await sql`DROP TABLE IF EXISTS questions CASCADE`
+    migrations.push('legacy evaluator/token tables dropped OK')
+  } catch (e) { errors.push(`drop legacy tables: ${e}`) }
 
-  // ── stages: set default on "order" column ──
+  // ── papéis: admin_users ganha role e area_id ──
   try {
-    await sql`ALTER TABLE stages ALTER COLUMN "order" SET DEFAULT 0`
-    migrations.push('stages."order" DEFAULT OK')
-  } catch (e) { errors.push(`stages."order" DEFAULT: ${e}`) }
+    await sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'area_admin'`
+    migrations.push('admin_users.role OK')
+  } catch (e) { errors.push(`admin_users.role: ${e}`) }
 
-  // ── questions: garantir order_index e stage_id ──
-  try {
-    await sql`ALTER TABLE questions ADD COLUMN IF NOT EXISTS order_index INTEGER DEFAULT 0`
-    migrations.push('questions.order_index OK')
-  } catch (e) { errors.push(`questions.order_index: ${e}`) }
-
-  // ── questions: set default on "order" column ──
-  try {
-    await sql`ALTER TABLE questions ALTER COLUMN "order" SET DEFAULT 0`
-    migrations.push('questions."order" DEFAULT OK')
-  } catch (e) { errors.push(`questions."order" DEFAULT: ${e}`) }
-
-  try {
-    await sql`ALTER TABLE questions ADD COLUMN IF NOT EXISTS stage_id UUID`
-    migrations.push('questions.stage_id OK')
-  } catch (e) { errors.push(`questions.stage_id: ${e}`) }
-
-  // ── answers: garantir scale_value, text_value e evaluator_id ──
-  try {
-    await sql`ALTER TABLE answers ADD COLUMN IF NOT EXISTS scale_value INTEGER`
-    migrations.push('answers.scale_value OK')
-  } catch (e) { errors.push(`answers.scale_value: ${e}`) }
-
-  try {
-    await sql`ALTER TABLE answers ADD COLUMN IF NOT EXISTS text_value TEXT`
-    migrations.push('answers.text_value OK')
-  } catch (e) { errors.push(`answers.text_value: ${e}`) }
-
-  try {
-    await sql`ALTER TABLE answers ADD COLUMN IF NOT EXISTS evaluator_id UUID`
-    migrations.push('answers.evaluator_id OK')
-  } catch (e) { errors.push(`answers.evaluator_id: ${e}`) }
-
-  // ── evaluations: garantir colunas para 360 ──
-  try {
-    await sql`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS evaluator_id UUID`
-    migrations.push('evaluations.evaluator_id OK')
-  } catch (e) { errors.push(`evaluations.evaluator_id: ${e}`) }
-
-  try {
-    await sql`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS evaluated_id UUID`
-    migrations.push('evaluations.evaluated_id OK')
-  } catch (e) { errors.push(`evaluations.evaluated_id: ${e}`) }
-
-  try {
-    await sql`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS questionnaire_id UUID`
-    migrations.push('evaluations.questionnaire_id OK')
-  } catch (e) { errors.push(`evaluations.questionnaire_id: ${e}`) }
-
-  try {
-    await sql`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending'`
-    migrations.push('evaluations.status OK')
-  } catch (e) { errors.push(`evaluations.status: ${e}`) }
-
-  try {
-    await sql`ALTER TABLE evaluations ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP WITH TIME ZONE`
-    migrations.push('evaluations.completed_at OK')
-  } catch (e) { errors.push(`evaluations.completed_at: ${e}`) }
-
-  // ── response_tokens: garantir coluna evaluation_id ──
-  try {
-    await sql`ALTER TABLE response_tokens ADD COLUMN IF NOT EXISTS evaluation_id UUID`
-    migrations.push('response_tokens.evaluation_id OK')
-  } catch (e) { errors.push(`response_tokens.evaluation_id: ${e}`) }
-
-  // ── participants: garantir tabela com company_id ──
+  // ── áreas ──
   try {
     await sql`
-      CREATE TABLE IF NOT EXISTS participants (
+      CREATE TABLE IF NOT EXISTS areas (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         name TEXT NOT NULL,
-        email TEXT NOT NULL,
-        company_id UUID NOT NULL,
+        order_index INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `
-    migrations.push('participants table OK')
-  } catch (e) { errors.push(`participants table: ${e}`) }
+    migrations.push('areas table OK')
+  } catch (e) { errors.push(`areas table: ${e}`) }
 
-  // ── response_tokens: garantir tabela ──
+  try {
+    await sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS area_id UUID REFERENCES areas(id)`
+    migrations.push('admin_users.area_id OK')
+  } catch (e) { errors.push(`admin_users.area_id: ${e}`) }
+
+  // ── áreas envolvidas por empresa ──
+  // company_id é TEXT (não UUID) pra combinar com companies.id, que já existe
+  // como TEXT no schema atual.
   try {
     await sql`
-      CREATE TABLE IF NOT EXISTS response_tokens (
+      CREATE TABLE IF NOT EXISTS company_areas (
+        company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        area_id UUID NOT NULL REFERENCES areas(id) ON DELETE CASCADE,
+        PRIMARY KEY (company_id, area_id)
+      )
+    `
+    migrations.push('company_areas table OK')
+  } catch (e) { errors.push(`company_areas table: ${e}`) }
+
+  // ── questionário global por área ──
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS area_questions (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        token TEXT NOT NULL UNIQUE,
-        evaluation_id UUID,
-        expires_at TIMESTAMP WITH TIME ZONE,
-        used_at TIMESTAMP WITH TIME ZONE,
+        area_id UUID NOT NULL REFERENCES areas(id) ON DELETE CASCADE,
+        text TEXT NOT NULL,
+        order_index INTEGER NOT NULL DEFAULT 0,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `
-    migrations.push('response_tokens table OK')
-  } catch (e) { errors.push(`response_tokens table: ${e}`) }
+    migrations.push('area_questions table OK')
+  } catch (e) { errors.push(`area_questions table: ${e}`) }
 
-  // ── survey_answers: tabela de respostas de formulário público ──
+  // ── avaliações (area_admin respondendo por uma empresa) ──
+  // company_id e admin_user_id são TEXT pra combinar com companies.id e
+  // admin_users.id, que já existem como TEXT no schema atual.
   try {
     await sql`
-      CREATE TABLE IF NOT EXISTS survey_answers (
+      CREATE TABLE IF NOT EXISTS evaluations (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        questionnaire_id UUID NOT NULL,
-        question_id UUID NOT NULL,
+        company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        area_id UUID NOT NULL REFERENCES areas(id) ON DELETE CASCADE,
+        admin_user_id TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'in_progress',
+        completed_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE (company_id, area_id, admin_user_id)
+      )
+    `
+    migrations.push('evaluations table OK')
+  } catch (e) { errors.push(`evaluations table: ${e}`) }
+
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS evaluation_answers (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        evaluation_id UUID NOT NULL REFERENCES evaluations(id) ON DELETE CASCADE,
+        question_id UUID NOT NULL REFERENCES area_questions(id) ON DELETE CASCADE,
         score INTEGER,
         comment TEXT,
-        respondent_name TEXT,
-        session_id TEXT,
-        submitted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        UNIQUE (evaluation_id, question_id)
       )
     `
-    migrations.push('survey_answers table OK')
-  } catch (e) { errors.push(`survey_answers: ${e}`) }
-
-  // ── survey_answers: add respondent_email column ──
-  try {
-    await sql`ALTER TABLE survey_answers ADD COLUMN IF NOT EXISTS respondent_email TEXT`
-    migrations.push('survey_answers.respondent_email OK')
-  } catch (e) { errors.push(`survey_answers.respondent_email: ${e}`) }
-
-  // ── survey_answers: add participant_id column ──
-  try {
-    await sql`ALTER TABLE survey_answers ADD COLUMN IF NOT EXISTS participant_id UUID`
-    migrations.push('survey_answers.participant_id OK')
-  } catch (e) { errors.push(`survey_answers.participant_id: ${e}`) }
+    migrations.push('evaluation_answers table OK')
+  } catch (e) { errors.push(`evaluation_answers table: ${e}`) }
 
   return NextResponse.json({ migrations, errors })
 }

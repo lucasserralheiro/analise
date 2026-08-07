@@ -11,7 +11,7 @@ export async function GET() {
 
     const companies = await sql`
       SELECT c.id, c.name, c.cnpj, c.description, c.created_at,
-             (SELECT COUNT(*) FROM company_evaluators WHERE company_id = c.id) as evaluators_count,
+             (SELECT COUNT(*) FROM company_areas WHERE company_id = c.id) as areas_count,
              (SELECT COUNT(*) FROM company_documents WHERE company_id = c.id) as documents_count
       FROM companies c
       ORDER BY c.created_at DESC

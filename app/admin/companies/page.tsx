@@ -29,7 +29,7 @@ interface Company {
   name: string
   cnpj: string | null
   description: string | null
-  evaluators_count: number
+  areas_count: number
   documents_count: number
 }
 
@@ -207,7 +207,7 @@ export default function CompaniesPage() {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Users className="h-4 w-4" />
-                    <span>{company.evaluators_count || 0} avaliadores</span>
+                    <span>{company.areas_count || 0} áreas envolvidas</span>
                   </div>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <FileText className="h-4 w-4" />
