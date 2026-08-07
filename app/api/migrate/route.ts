@@ -59,6 +59,12 @@ export async function POST() {
     migrations.push('admin_users.role OK')
   } catch (e) { errors.push(`admin_users.role: ${e}`) }
 
+  // ── login por senha removido: password_hash não é mais obrigatório ──
+  try {
+    await sql`ALTER TABLE admin_users ALTER COLUMN password_hash DROP NOT NULL`
+    migrations.push('admin_users.password_hash nullable OK')
+  } catch (e) { errors.push(`admin_users.password_hash: ${e}`) }
+
   // ── áreas ──
   try {
     await sql`

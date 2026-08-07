@@ -22,8 +22,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) router.push('/login')
-    if (!loading && user && !isAdmin) router.push('/avaliar')
-  }, [user, loading, router, isAdmin])
+  }, [user, loading, router])
 
   // Garante colunas necessárias no banco (roda 1× por sessão de admin)
   useEffect(() => {
@@ -62,9 +61,8 @@ const navItems = [
 
   const companyNavItems = isInCompany && companyBasePath ? [
     { href: companyBasePath, icon: BarChart3, label: 'Visão Geral', exact: true },
-    { href: `${companyBasePath}/evaluators`, icon: Users, label: 'Avaliadores', exact: true },
     { href: `${companyBasePath}/documents`, icon: FileText, label: 'Documentos', exact: true },
-    { href: `${companyBasePath}/questionnaires`, icon: ClipboardList, label: 'Questionários', exact: true },
+    { href: `${companyBasePath}/results`, icon: ClipboardList, label: 'Resultados', exact: true },
   ] : []
 
 function isActive(href: string, exact: boolean): boolean {
