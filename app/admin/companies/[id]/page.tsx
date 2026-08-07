@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Building2, CheckCircle2, Clock, UserPlus } from 'lucide-react'
+import { useAuth } from '@/components/auth-context'
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error('Failed')
@@ -30,6 +31,7 @@ interface Evaluator {
 export default function CompanyHubPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const { user } = useAuth()
 
   const { data: company } = useSWR<Company>(`/api/companies/${id}`, fetcher)
   const { data: evaluatorsRaw } = useSWR<Evaluator[]>(`/api/companies/${id}/evaluators`, fetcher)
@@ -100,6 +102,24 @@ export default function CompanyHubPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       )}
+
+      {/* Ações de avaliação */}
+      <div className="flex items-center gap-4">
+        {user?.role === 'area_admin' && (
+          <Link
+            href={`/admin/companies/${id}/evaluate`}
+            className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:underline"
+          >
+            Responder minha avaliação →
+          </Link>
+        )}
+        <Link
+          href={`/admin/companies/${id}/results`}
+          className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:underline"
+        >
+          Ver resultados de todas as áreas →
+        </Link>
+      </div>
 
       {/* Avaliadores — ticket list */}
       <div>
