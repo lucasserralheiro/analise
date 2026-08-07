@@ -54,6 +54,9 @@ const navItems = [
           { href: '/admin/users', icon: Users, label: 'Usuários', exact: false },
         ]
       : []),
+    ...(user?.role === 'area_admin'
+      ? [{ href: '/admin/my-questionnaire', icon: ClipboardList, label: 'Meu Questionário', exact: false }]
+      : []),
   ]
 
   const companyNavItems = isInCompany && companyBasePath ? [
