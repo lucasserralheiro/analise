@@ -177,7 +177,7 @@ function isActive(href: string, exact: boolean): boolean {
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate leading-tight">{user.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {user.role === 'admin' ? 'Administrador' : 'Avaliador'}
+                  {user.role === 'super_admin' ? 'Super Admin' : 'Admin de Área'}
                 </p>
               </div>
             </div>

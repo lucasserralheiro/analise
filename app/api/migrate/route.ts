@@ -14,7 +14,7 @@ export async function GET() {
         WHERE table_name = ${table}
         ORDER BY ordinal_position
       `
-      result[table] = cols.map((c: { column_name: string }) => c.column_name)
+      result[table] = (cols as { column_name: string }[]).map((c) => c.column_name)
     }
 
     return NextResponse.json(result)
