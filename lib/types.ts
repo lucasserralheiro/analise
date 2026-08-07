@@ -55,6 +55,29 @@ export interface EvaluationAnswer {
   comment: string | null
 }
 
+export interface AiAreaAnalysis {
+  id: string
+  company_id: string
+  area_id: string
+  content: string
+  created_by: string
+  model_used: string
+  created_at: Date
+}
+
+export interface AiOverallAnalysis {
+  id: string
+  company_id: string
+  content: string
+  created_by: string
+  model_used: string
+  created_at: Date
+}
+
+export interface AiSettings {
+  instructions: string
+}
+
 // Consolidation types
 export interface QuestionScore {
   question_id: string

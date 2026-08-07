@@ -144,5 +144,53 @@ export async function POST() {
     migrations.push('evaluation_answers table OK')
   } catch (e) { errors.push(`evaluation_answers table: ${e}`) }
 
+  // ── pareceres de IA por área ──
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS ai_area_analyses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        area_id UUID NOT NULL REFERENCES areas(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        created_by TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+        model_used TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `
+    migrations.push('ai_area_analyses table OK')
+  } catch (e) { errors.push(`ai_area_analyses table: ${e}`) }
+
+  // ── parecer geral de IA ──
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS ai_overall_analyses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        created_by TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+        model_used TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `
+    migrations.push('ai_overall_analyses table OK')
+  } catch (e) { errors.push(`ai_overall_analyses table: ${e}`) }
+
+  // ── configurações de IA (instruções de prompt) ──
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS ai_settings (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        instructions TEXT NOT NULL DEFAULT '',
+        CONSTRAINT ai_settings_singleton CHECK (id = 1)
+      )
+    `
+    await sql`
+      INSERT INTO ai_settings (id, instructions)
+      VALUES (1, 'Seja objetivo e técnico. Destaque pontos fortes, riscos identificados e recomendações práticas.')
+      ON CONFLICT (id) DO NOTHING
+    `
+    migrations.push('ai_settings table OK')
+  } catch (e) { errors.push(`ai_settings table: ${e}`) }
+
   return NextResponse.json({ migrations, errors })
 }
