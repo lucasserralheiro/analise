@@ -58,7 +58,10 @@ export type GeminiInputPart =
   | { type: 'document'; data: string; mime_type: string }
   | { type: 'image'; data: string; mime_type: string }
 
-export async function generateWithGemini(input: GeminiInputPart[]): Promise<string> {
+export async function generateWithGemini(
+  input: GeminiInputPart[],
+  systemInstruction?: string
+): Promise<string> {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error('GEMINI_API_KEY não configurada')
   }
@@ -66,12 +69,15 @@ export async function generateWithGemini(input: GeminiInputPart[]): Promise<stri
   const ai = new GoogleGenAI({})
   const interaction = await ai.interactions.create({
     model: MODEL,
+    system_instruction: systemInstruction,
     input,
   })
 
   return interaction.output_text ?? ''
 }
 ```
+
+(Verificado contra os tipos reais do pacote `@google/genai@2.16.0` instalado — `interactions.create` aceita `system_instruction` nativamente, então as instruções configuráveis do `ai_settings` vão aqui em vez de concatenadas no texto do prompt.)
 
 - [ ] **Step 4: Verificar que o projeto compila**
 
