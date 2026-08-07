@@ -48,8 +48,14 @@ export async function POST() {
   } catch (e) { errors.push(`drop legacy tables: ${e}`) }
 
   // ── papéis: admin_users ganha role e area_id ──
+  // A coluna "role" já existia do sistema antigo (valores 'admin'/'usuario'),
+  // então ADD COLUMN IF NOT EXISTS não muda nada nela — remapeia os valores
+  // antigos pro novo modelo e corrige o default.
   try {
     await sql`ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'area_admin'`
+    await sql`UPDATE admin_users SET role = 'super_admin' WHERE role = 'admin'`
+    await sql`UPDATE admin_users SET role = 'area_admin' WHERE role = 'usuario'`
+    await sql`ALTER TABLE admin_users ALTER COLUMN role SET DEFAULT 'area_admin'`
     migrations.push('admin_users.role OK')
   } catch (e) { errors.push(`admin_users.role: ${e}`) }
 
