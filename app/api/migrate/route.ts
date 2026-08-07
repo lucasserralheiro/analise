@@ -29,15 +29,9 @@ export async function POST() {
   const errors: string[] = []
 
   // ── remove o modelo antigo de avaliador por token (sem dados a preservar) ──
-  // Precisa rodar ANTES de criar as tabelas novas: "evaluations" já existia no
-  // schema antigo (com id TEXT, evaluator_id/evaluated_id/questionnaire_id) e
-  // colidia com a tabela nova (id UUID) — CASCADE cuida de quem referenciava
-  // evaluations.id/answers.id.
   try {
     await sql`DROP TABLE IF EXISTS survey_answers`
     await sql`DROP TABLE IF EXISTS response_tokens`
-    await sql`DROP TABLE IF EXISTS answers CASCADE`
-    await sql`DROP TABLE IF EXISTS evaluations CASCADE`
     await sql`DROP TABLE IF EXISTS company_evaluators`
     await sql`DROP TABLE IF EXISTS company_question_questions`
     await sql`DROP TABLE IF EXISTS company_questionnaires`
@@ -46,6 +40,25 @@ export async function POST() {
     await sql`DROP TABLE IF EXISTS questions CASCADE`
     migrations.push('legacy evaluator/token tables dropped OK')
   } catch (e) { errors.push(`drop legacy tables: ${e}`) }
+
+  // ── "evaluations"/"answers" do schema antigo (evaluator_id/evaluated_id/
+  // questionnaire_id, id TEXT) colidiam de nome com as tabelas novas.
+  // Só derruba se a tabela ainda tiver a coluna antiga "evaluator_id" —
+  // idempotente e seguro rodar de novo sem apagar dados reais já migrados
+  // (esse endpoint roda a cada carregamento de página do admin).
+  try {
+    const oldSchema = await sql`
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'evaluations' AND column_name = 'evaluator_id'
+    `
+    if (oldSchema.length > 0) {
+      await sql`DROP TABLE IF EXISTS answers CASCADE`
+      await sql`DROP TABLE IF EXISTS evaluations CASCADE`
+      migrations.push('legacy evaluations/answers tables dropped OK')
+    } else {
+      migrations.push('legacy evaluations/answers tables already migrated (skip)')
+    }
+  } catch (e) { errors.push(`drop legacy evaluations/answers: ${e}`) }
 
   // ── papéis: admin_users ganha role e area_id ──
   // A coluna "role" já existia do sistema antigo (valores 'admin'/'usuario'),
