@@ -3,9 +3,7 @@
 import { use } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { ArrowLeft, Building2, CheckCircle2, Clock, UserPlus } from 'lucide-react'
+import { CheckCircle2, Clock } from 'lucide-react'
 import { useAuth } from '@/components/auth-context'
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -13,36 +11,34 @@ const fetcher = (url: string) => fetch(url).then(res => {
   return res.json()
 })
 
-interface Company {
-  id: string
+interface RosterPerson {
+  admin_user_id: string
   name: string
-  cnpj: string | null
-  description: string | null
+  evaluation_status: 'not_started' | 'in_progress' | 'completed'
 }
 
-interface Evaluator {
-  id: string
-  name: string
-  sector: string | null
-  position: string | null
-  status: string
+interface RosterArea {
+  area_id: string
+  area_name: string
+  people: RosterPerson[]
 }
 
 export default function CompanyHubPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const router = useRouter()
   const { user } = useAuth()
 
-  const { data: company } = useSWR<Company>(`/api/companies/${id}`, fetcher)
-  const { data: evaluatorsRaw } = useSWR<Evaluator[]>(`/api/companies/${id}/evaluators`, fetcher)
-  const evaluators = Array.isArray(evaluatorsRaw) ? evaluatorsRaw : []
+  const { data: rosterRaw } = useSWR<RosterArea[]>(`/api/companies/${id}/roster`, fetcher)
+  const roster = Array.isArray(rosterRaw) ? rosterRaw : []
 
-  const total = evaluators.length
-  const completed = evaluators.filter(e => e.status === 'COMPLETED').length
+  const allPeople = roster.flatMap(area => area.people)
+  const total = allPeople.length
+  const completed = allPeople.filter(p => p.evaluation_status === 'completed').length
   const pending = total - completed
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0
 
-  if (!company) {
+  const myAreaInvolved = user?.role === 'area_admin' && roster.some(area => area.area_id === user.areaId)
+
+  if (!rosterRaw) {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-indigo-600" />
@@ -53,29 +49,11 @@ export default function CompanyHubPage({ params }: { params: Promise<{ id: strin
   return (
     <div className="max-w-2xl space-y-6">
 
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
-            <Building2 className="h-5 w-5 text-indigo-600" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl font-bold truncate">{company.name}</h1>
-            {company.cnpj && (
-              <p className="text-xs text-muted-foreground">CNPJ: {company.cnpj}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
           <p className="text-2xl font-bold text-indigo-600">{total}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">Avaliadores</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Pessoas envolvidas</p>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
           <p className="text-2xl font-bold text-emerald-600">{completed}</p>
@@ -103,88 +81,86 @@ export default function CompanyHubPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      {/* Ações de avaliação */}
-      <div className="flex items-center gap-4">
-        {user?.role === 'area_admin' && (
-          <Link
-            href={`/admin/companies/${id}/evaluate`}
-            className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:underline"
-          >
-            Responder minha avaliação →
-          </Link>
-        )}
+      {/* Ação rápida: só quando a própria área do usuário está envolvida */}
+      {myAreaInvolved && (
         <Link
-          href={`/admin/companies/${id}/results`}
+          href={`/admin/companies/${id}/evaluate`}
           className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:underline"
         >
-          Ver resultados de todas as áreas →
+          Responder minha avaliação →
         </Link>
-      </div>
+      )}
 
-      {/* Avaliadores — ticket list */}
+      {/* Áreas — roster real (empresa × área × admin × status) */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest">
-            Avaliadores
-          </h2>
-          <Link
-            href={`/admin/companies/${id}/evaluators`}
-            className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:underline"
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            Gerenciar
-          </Link>
-        </div>
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+          Áreas
+        </h2>
 
-        {evaluators.length === 0 ? (
+        {roster.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 text-center">
-            <p className="text-sm text-muted-foreground mb-3">Nenhum avaliador cadastrado ainda.</p>
-            <Link
-              href={`/admin/companies/${id}/evaluators`}
-              className="text-sm font-semibold text-indigo-600 hover:underline"
-            >
-              Adicionar avaliadores →
-            </Link>
+            <p className="text-sm text-muted-foreground">Nenhuma área envolvida nesta empresa ainda.</p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {evaluators.map(ev => (
-              <div
-                key={ev.id}
-                className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-              >
-                <div className={`h-1 ${ev.status === 'COMPLETED' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                <div className="flex items-center gap-4 px-5 py-3.5">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                    ev.status === 'COMPLETED'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-indigo-100 text-indigo-700'
-                  }`}>
-                    {ev.name.charAt(0).toUpperCase()}
+          <div className="space-y-4">
+            {roster.map(area => (
+              <div key={area.area_id}>
+                <p className="text-xs font-semibold text-gray-500 mb-2">{area.area_name}</p>
+
+                {area.people.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-5 text-center">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Nenhum admin de área cadastrado para esta área.
+                    </p>
+                    {user?.role === 'super_admin' && (
+                      <Link href="/admin/users" className="text-sm font-semibold text-indigo-600 hover:underline">
+                        Convidar administrador de área →
+                      </Link>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{ev.name}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {ev.sector && (
-                        <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">
-                          {ev.sector}
-                        </span>
-                      )}
-                      {ev.position && (
-                        <span className="text-xs text-muted-foreground">{ev.position}</span>
-                      )}
-                    </div>
+                ) : (
+                  <div className="space-y-2">
+                    {area.people.map(person => (
+                      <div
+                        key={person.admin_user_id}
+                        className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                      >
+                        <div className={`h-1 ${
+                          person.evaluation_status === 'completed'
+                            ? 'bg-emerald-400'
+                            : person.evaluation_status === 'in_progress'
+                              ? 'bg-amber-400'
+                              : 'bg-gray-200'
+                        }`} />
+                        <div className="flex items-center gap-4 px-5 py-3.5">
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                            person.evaluation_status === 'completed'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-indigo-100 text-indigo-700'
+                          }`}>
+                            {person.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">{person.name}</p>
+                          </div>
+                          {person.evaluation_status === 'completed' ? (
+                            <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full shrink-0 border border-emerald-200">
+                              <CheckCircle2 className="h-3 w-3" /> Respondida
+                            </span>
+                          ) : person.evaluation_status === 'in_progress' ? (
+                            <span className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full shrink-0 border border-amber-200">
+                              <Clock className="h-3 w-3" /> Em andamento
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-xs font-semibold text-gray-600 bg-gray-50 px-2.5 py-1 rounded-full shrink-0 border border-gray-200">
+                              <Clock className="h-3 w-3" /> Não iniciada
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  {ev.status === 'COMPLETED' ? (
-                    <span className="flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full shrink-0 border border-emerald-200">
-                      <CheckCircle2 className="h-3 w-3" /> Respondida
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full shrink-0 border border-amber-200">
-                      <Clock className="h-3 w-3" /> Pendente
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
             ))}
           </div>
