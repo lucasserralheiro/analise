@@ -49,7 +49,10 @@ const navItems = [
     { href: '/admin', icon: Home, label: 'Dashboard', exact: true },
     { href: '/admin/companies', icon: Building2, label: 'Empresas', exact: false },
     ...(user?.role === 'super_admin'
-      ? [{ href: '/admin/areas', icon: Layers, label: 'Áreas', exact: false }]
+      ? [
+          { href: '/admin/areas', icon: Layers, label: 'Áreas', exact: false },
+          { href: '/admin/users', icon: Users, label: 'Usuários', exact: false },
+        ]
       : []),
   ]
 
