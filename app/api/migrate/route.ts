@@ -205,5 +205,94 @@ export async function POST() {
     migrations.push('ai_settings table OK')
   } catch (e) { errors.push(`ai_settings table: ${e}`) }
 
+  // ── formulários criados pelo super admin (substituem o modelo fixo por área) ──
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS company_forms (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        company_id TEXT NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'draft',
+        created_by TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+        sent_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `
+    migrations.push('company_forms table OK')
+  } catch (e) { errors.push(`company_forms table: ${e}`) }
+
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS form_questions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        form_id UUID NOT NULL REFERENCES company_forms(id) ON DELETE CASCADE,
+        type TEXT NOT NULL,
+        text TEXT NOT NULL,
+        options TEXT[],
+        allow_multiple BOOLEAN NOT NULL DEFAULT false,
+        required BOOLEAN NOT NULL DEFAULT true,
+        order_index INTEGER NOT NULL DEFAULT 0
+      )
+    `
+    migrations.push('form_questions table OK')
+  } catch (e) { errors.push(`form_questions table: ${e}`) }
+
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS form_recipients (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        form_id UUID NOT NULL REFERENCES company_forms(id) ON DELETE CASCADE,
+        admin_user_id TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+        UNIQUE (form_id, admin_user_id)
+      )
+    `
+    migrations.push('form_recipients table OK')
+  } catch (e) { errors.push(`form_recipients table: ${e}`) }
+
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS form_responses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        form_id UUID NOT NULL REFERENCES company_forms(id) ON DELETE CASCADE,
+        admin_user_id TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'in_progress',
+        completed_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        UNIQUE (form_id, admin_user_id)
+      )
+    `
+    migrations.push('form_responses table OK')
+  } catch (e) { errors.push(`form_responses table: ${e}`) }
+
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS form_answers (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        response_id UUID NOT NULL REFERENCES form_responses(id) ON DELETE CASCADE,
+        question_id UUID NOT NULL REFERENCES form_questions(id) ON DELETE CASCADE,
+        score INTEGER,
+        text_value TEXT,
+        selected_options TEXT[],
+        yes_no BOOLEAN,
+        UNIQUE (response_id, question_id)
+      )
+    `
+    migrations.push('form_answers table OK')
+  } catch (e) { errors.push(`form_answers table: ${e}`) }
+
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS form_analyses (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        form_id UUID NOT NULL REFERENCES company_forms(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        created_by TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+        model_used TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      )
+    `
+    migrations.push('form_analyses table OK')
+  } catch (e) { errors.push(`form_analyses table: ${e}`) }
+
   return NextResponse.json({ migrations, errors })
 }
