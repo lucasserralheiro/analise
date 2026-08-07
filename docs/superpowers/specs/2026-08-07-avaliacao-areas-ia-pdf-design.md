@@ -62,23 +62,24 @@ Este documento substitui esse modelo por: (1) login via Google para todo mundo; 
 
 ---
 
-## 5. Análise técnica por IA
+## 5. Análise técnica por IA (revisão 3 — desenho técnico fechado)
 
-- **Provedor:** Google Gemini, via API do Google AI Studio (chave de API simples). Modelo configurável por variável de ambiente (padrão a definir na implementação).
-- **Gatilho:** manual — botão "Gerar Análise" na tela da empresa. `super_admin` gera a análise completa; um `area_admin` pode gerar/regenerar só a parte da análise da sua área.
+- **Provedor:** Google Gemini, via API do Google AI Studio (chave de API simples, variável de ambiente `GEMINI_API_KEY`). Modelo: `gemini-2.5-flash` (via variável de ambiente, fácil de trocar por `gemini-2.5-pro` depois).
+- **Gatilho:** manual, síncrono — botão fica "Gerando..." até a resposta voltar (sem fila/polling; volume de uso interno baixo o suficiente pra isso ser aceitável).
+  - `area_admin`: botão "Gerar Análise da Minha Área" — gera/regenera só o parecer da própria área.
+  - `super_admin`: botão "Gerar Parecer Geral" — gera o parecer geral, usando como entrada os pareceres de área **mais recentes já existentes** (não recalcula os de área).
 - **Entrada:**
-  - Documentos PDF e imagem da empresa (conteúdo lido diretamente pela IA).
-  - Documentos Word/Excel/PowerPoint aparecem listados por título, sem conteúdo lido.
-  - Notas e comentários de todas as avaliações (de todos os `area_admins`), agrupados por área.
-- **Saída:** um parecer geral da empresa + um parecer específico por área.
-- **Histórico:** cada geração cria um novo registro (não sobrescreve a anterior).
-- **Prompt configurável:** tela de configurações (`super_admin` apenas) com um campo de texto livre — "Instruções para a IA" — injetado no prompt de geração, com um valor padrão sensato pré-preenchido.
+  - Parecer de área: documentos PDF/imagem da empresa (bytes lidos via `file_url`, convertidos pra base64, enviados embutidos na chamada — sem precisar de upload separado pro Gemini) + notas/comentários de todas as avaliações daquela área.
+  - Parecer geral: os mesmos documentos + o conteúdo mais recente de cada `ai_area_analyses` da empresa.
+  - Documentos Word/Excel/PowerPoint entram só como nome na lista, sem conteúdo lido.
+- **Histórico:** cada geração cria um novo registro — não sobrescreve o anterior. "Atual" = o mais recente por `(company_id, area_id)` ou `company_id`.
+- **Prompt configurável:** tela de configurações (`super_admin` apenas) com um campo de texto livre — "Instruções para a IA" — injetado em ambos os prompts (área e geral), com um valor padrão sensato pré-preenchido.
 
 ### Modelo de dados
 
-- `ai_analyses`: `id`, `company_id`, `status` (`pending`/`completed`/`failed`), `overall_content`, `created_by` (`admin_user_id`), `created_at`, `model_used`.
-- `ai_analysis_areas`: `id`, `analysis_id`, `area_id`, `content`.
-- `ai_settings`: `instructions` (texto livre editável pelo `super_admin`).
+- `ai_area_analyses`: `id`, `company_id`, `area_id`, `content`, `created_by` (`admin_user_id`), `created_at`, `model_used`.
+- `ai_overall_analyses`: `id`, `company_id`, `content`, `created_by` (`admin_user_id`), `created_at`, `model_used`.
+- `ai_settings`: `instructions` (texto livre editável pelo `super_admin`; linha única).
 
 ---
 
