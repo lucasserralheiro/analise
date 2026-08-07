@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from '@/components/auth-context'
 import { Button } from '@/components/ui/button'
 import {
   Building2, Users, FileText, BarChart3, LogOut, Menu, X,
-  Home, ClipboardList, ChevronLeft, Layers
+  Home, ClipboardList, ChevronLeft, Layers, Sparkles
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -52,6 +52,7 @@ const navItems = [
           { href: '/admin/dashboard', icon: BarChart3, label: 'Painel', exact: false },
           { href: '/admin/areas', icon: Layers, label: 'Áreas', exact: false },
           { href: '/admin/users', icon: Users, label: 'Usuários', exact: false },
+          { href: '/admin/settings/ai', icon: Sparkles, label: 'Configurações de IA', exact: false },
         ]
       : []),
     ...(user?.role === 'area_admin'
