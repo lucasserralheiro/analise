@@ -3,16 +3,13 @@
 import { ReactNode, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import useSWR from 'swr'
 import { AuthProvider, useAuth } from '@/components/auth-context'
 import { Button } from '@/components/ui/button'
 import {
-  Building2, Users, FileText, BarChart3, LogOut, Menu, X,
-  Home, ClipboardList, ChevronLeft, Layers, Sparkles
+  Building2, Users, BarChart3, LogOut, Menu, X,
+  Home, ClipboardList, Layers, Sparkles
 } from 'lucide-react'
 import { useState } from 'react'
-
-const fetcher = (url: string) => fetch(url).then(res => res.ok ? res.json() : null)
 
 function AdminLayoutContent({ children }: { children: ReactNode }) {
   const { user, loading, logout, isAdmin } = useAuth()
@@ -31,19 +28,6 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     }
   }, [user, isAdmin])
 
-  // Extrai base da empresa: /admin/companies/[id]
-  const companyBaseMatch = pathname.match(/^(\/admin\/companies\/([^/]+))/)
-  const companyBasePath = companyBaseMatch ? companyBaseMatch[1] : null
-  const companyId = companyBaseMatch ? companyBaseMatch[2] : null
-  const isInCompany = !!companyBasePath && pathname !== '/admin/companies'
-
-  // Busca nome da empresa quando estiver dentro de uma empresa
-  const { data: companyData } = useSWR(
-    companyId ? `/api/companies/${companyId}` : null,
-    fetcher
-  )
-  const companyName = companyData?.name ?? null
-
 const navItems = [
     { href: '/admin', icon: Home, label: 'Dashboard', exact: true },
     { href: '/admin/companies', icon: Building2, label: 'Empresas', exact: false },
@@ -59,12 +43,6 @@ const navItems = [
       ? [{ href: '/admin/my-questionnaire', icon: ClipboardList, label: 'Meu Questionário', exact: false }]
       : []),
   ]
-
-  const companyNavItems = isInCompany && companyBasePath ? [
-    { href: companyBasePath, icon: BarChart3, label: 'Visão Geral', exact: true },
-    { href: `${companyBasePath}/documents`, icon: FileText, label: 'Documentos', exact: true },
-    { href: `${companyBasePath}/results`, icon: ClipboardList, label: 'Resultados', exact: true },
-  ] : []
 
 function isActive(href: string, exact: boolean): boolean {
     if (exact) return pathname === href
@@ -126,44 +104,6 @@ function isActive(href: string, exact: boolean): boolean {
                 {item.label}
               </Link>
             ))}
-
-            {/* Company context nav */}
-            {companyNavItems.length > 0 && (
-              <div className="pt-4">
-                {/* Company name chip — back link */}
-                <Link
-                  href="/admin/companies"
-                  className="flex items-center gap-1.5 px-3 mb-2 text-xs text-muted-foreground hover:text-indigo-600 transition-colors group"
-                  onClick={() => setSidebarOpen(false)}
-                >
-                  <ChevronLeft className="h-3 w-3 group-hover:-translate-x-0.5 transition-transform" />
-                  Empresas
-                </Link>
-                <div className="px-3 mb-2">
-                  <div className="flex items-center gap-2 py-1.5 px-2 bg-indigo-600 text-white rounded-lg">
-                    <Building2 className="h-3.5 w-3.5 shrink-0" />
-                    <span className="text-xs font-semibold truncate">
-                      {companyName ?? '…'}
-                    </span>
-                  </div>
-                </div>
-                {companyNavItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      isActive(item.href, item.exact)
-                        ? 'bg-indigo-50 text-indigo-700'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            )}
 
           </nav>
 
