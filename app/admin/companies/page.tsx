@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { FieldGroup, Field, FieldLabel } from '@/components/ui/field'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -36,7 +37,11 @@ interface Company {
 export default function CompaniesPage() {
   const { data: companies, mutate } = useSWR<Company[]>('/api/companies', fetcher)
   const companiesArray = Array.isArray(companies) ? companies : []
-  
+
+  const { data: areas } = useSWR<{ id: string; name: string }[]>('/api/areas', fetcher)
+  const areasArray = Array.isArray(areas) ? areas : []
+  const [selectedAreaIds, setSelectedAreaIds] = useState<string[]>([])
+
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingCompany, setEditingCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(false)
@@ -50,6 +55,7 @@ export default function CompaniesPage() {
   function openCreateDialog() {
     setEditingCompany(null)
     setFormData({ name: '', cnpj: '', description: '' })
+    setSelectedAreaIds([])
     setDialogOpen(true)
   }
 
@@ -59,6 +65,9 @@ export default function CompaniesPage() {
       name: company.name,
       cnpj: company.cnpj || '',
       description: company.description || ''
+    })
+    fetch(`/api/companies/${company.id}/areas`).then(r => r.json()).then((rows: { id: string }[]) => {
+      setSelectedAreaIds(rows.map(r => r.id))
     })
     setDialogOpen(true)
   }
@@ -78,6 +87,13 @@ export default function CompaniesPage() {
       })
 
       if (res.ok) {
+        const savedCompany = await res.json()
+        const companyIdForAreas = editingCompany?.id ?? savedCompany.id
+        await fetch(`/api/companies/${companyIdForAreas}/areas`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ area_ids: selectedAreaIds }),
+        })
         mutate()
         setDialogOpen(false)
         toast.success(editingCompany ? 'Empresa atualizada!' : 'Empresa criada!')
@@ -157,6 +173,27 @@ export default function CompaniesPage() {
                     placeholder="Breve descrição da empresa..."
                     rows={2}
                   />
+                </Field>
+                <Field>
+                  <FieldLabel>Áreas envolvidas</FieldLabel>
+                  <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                    {areasArray.map(area => (
+                      <label key={area.id} className="flex items-center gap-2 text-sm">
+                        <Checkbox
+                          checked={selectedAreaIds.includes(area.id)}
+                          onCheckedChange={(checked) => {
+                            setSelectedAreaIds(prev =>
+                              checked ? [...prev, area.id] : prev.filter(id => id !== area.id)
+                            )
+                          }}
+                        />
+                        {area.name}
+                      </label>
+                    ))}
+                    {areasArray.length === 0 && (
+                      <p className="text-xs text-muted-foreground">Nenhuma área cadastrada ainda.</p>
+                    )}
+                  </div>
                 </Field>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Salvando...' : (editingCompany ? 'Atualizar' : 'Criar Empresa')}
