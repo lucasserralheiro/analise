@@ -2,9 +2,8 @@
 
 import { use, useState } from 'react'
 import useSWR from 'swr'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, CheckCircle2, Clock, Sparkles, Loader2 } from 'lucide-react'
+import { CheckCircle2, Clock, Sparkles, Loader2 } from 'lucide-react'
 import { useAuth } from '@/components/auth-context'
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -26,7 +25,6 @@ interface EvaluationDetail {
 
 export default function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: companyId } = use(params)
-  const router = useRouter()
   const { user } = useAuth()
 
   const { data: evaluations } = useSWR<EvaluationRow[]>(`/api/companies/${companyId}/evaluations`, fetcher)
@@ -83,11 +81,6 @@ export default function ResultsPage({ params }: { params: Promise<{ id: string }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
-        <h1 className="text-xl font-bold">Resultados (todas as áreas)</h1>
-      </div>
-
       {/* Parecer geral */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <div className="flex items-center justify-between mb-3">

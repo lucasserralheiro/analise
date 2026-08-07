@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react'
 import useSWR from 'swr'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -15,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Plus, Trash2, ArrowLeft, FileText, Upload, Download, Eye, File, FileSpreadsheet, FileImage } from 'lucide-react'
+import { Plus, Trash2, FileText, Upload, Download, Eye, File, FileSpreadsheet, FileImage } from 'lucide-react'
 import { toast } from 'sonner'
 
 const fetcher = (url: string) => fetch(url).then(res => {
@@ -41,7 +40,6 @@ function getFileIcon(fileUrl: string) {
 
 export default function CompanyDocumentsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = require('react').use(params)
-  const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const { data: documents = [], mutate } = useSWR<Document[]>(`/api/companies/${id}/documents`, fetcher)
@@ -122,11 +120,7 @@ export default function CompanyDocumentsPage({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold flex items-center gap-2"><FileText className="h-6 w-6" />Documentos e Materiais</h1>
-          <p className="text-muted-foreground">{docsArray.length} arquivo(s)</p>
-        </div>
+        <p className="text-muted-foreground flex-1">{docsArray.length} arquivo(s)</p>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-2" />Adicionar Documento</Button>

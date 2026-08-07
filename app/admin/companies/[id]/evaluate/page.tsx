@@ -4,7 +4,6 @@ import { use, useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/components/auth-context'
 
@@ -93,11 +92,6 @@ export default function EvaluatePage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="max-w-2xl mx-auto space-y-3">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
-        <h1 className="text-xl font-bold">Responder Avaliação</h1>
-      </div>
-
       {data.questions.map((q, idx) => {
         const answer = answersMap[q.id]
         return (
