@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
-import { getSession } from '@/lib/auth'
+import { getCurrentAdmin } from '@/lib/session'
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getSession()
+    const user = await getCurrentAdmin()
     if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
@@ -33,7 +33,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getSession()
+    const user = await getCurrentAdmin()
     if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }

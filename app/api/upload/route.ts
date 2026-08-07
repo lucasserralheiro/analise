@@ -2,11 +2,11 @@ import { NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { randomBytes } from 'crypto'
-import { getSession } from '@/lib/auth'
+import { getCurrentAdmin } from '@/lib/session'
 
 export async function POST(request: Request) {
   try {
-    const user = await getSession()
+    const user = await getCurrentAdmin()
     if (!user) {
       return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
     }
