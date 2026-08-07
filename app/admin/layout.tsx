@@ -8,7 +8,7 @@ import { AuthProvider, useAuth } from '@/components/auth-context'
 import { Button } from '@/components/ui/button'
 import {
   Building2, Users, FileText, BarChart3, LogOut, Menu, X,
-  Home, ClipboardList, ChevronLeft
+  Home, ClipboardList, ChevronLeft, Layers
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -48,6 +48,9 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
 const navItems = [
     { href: '/admin', icon: Home, label: 'Dashboard', exact: true },
     { href: '/admin/companies', icon: Building2, label: 'Empresas', exact: false },
+    ...(user?.role === 'super_admin'
+      ? [{ href: '/admin/areas', icon: Layers, label: 'Áreas', exact: false }]
+      : []),
   ]
 
   const companyNavItems = isInCompany && companyBasePath ? [
