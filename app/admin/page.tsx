@@ -20,8 +20,12 @@ interface Company { id: string; name: string }
 interface Participant { id: string }
 interface Questionnaire { id: string }
 interface Evaluation { id: string; status: string }
+interface PendingForm { form_id: string; form_title: string; company_id: string; company_name: string }
 
 export default function DashboardPage() {
+  const { data: pendingFormsRaw } = useSWR<PendingForm[]>('/api/forms/pending', fetcher)
+  const pendingForms = Array.isArray(pendingFormsRaw) ? pendingFormsRaw : []
+
   const { data: companies, isLoading: loadingCompanies } = useSWR<Company[]>('/api/companies', fetcher)
   const { data: participants, isLoading: loadingParticipants } = useSWR<Participant[]>('/api/participants', fetcher)
   const { data: questionnaires, isLoading: loadingQuestionnaires } = useSWR<Questionnaire[]>('/api/questionnaires', fetcher)
@@ -93,6 +97,35 @@ export default function DashboardPage() {
           Avalie seus colaboradores de forma completa e objetiva
         </p>
       </div>
+
+      {pendingForms.length > 0 && (
+        <Card className="border-2 border-amber-200 bg-amber-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-amber-600" />
+              Formulários pendentes pra você
+            </CardTitle>
+            <CardDescription>Você precisa responder estes formulários</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {pendingForms.map(f => (
+                <Link
+                  key={f.form_id}
+                  href={`/admin/companies/${f.company_id}/forms/${f.form_id}/respond`}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-white hover:bg-amber-50 transition-colors"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{f.form_title}</p>
+                    <p className="text-xs text-muted-foreground">{f.company_name}</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {completedSteps < steps.length && (
         <Card className="border-2 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
