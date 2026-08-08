@@ -3,25 +3,29 @@ import { sql } from '@/lib/db'
 import { requireSuperAdmin } from '@/lib/session'
 
 export async function GET() {
-  const user = await requireSuperAdmin()
-  if (!user) {
-    return NextResponse.json({ error: 'Apenas o super admin acessa o painel' }, { status: 403 })
+  try {
+    const user = await requireSuperAdmin()
+    if (!user) {
+      return NextResponse.json({ error: 'Apenas o super admin acessa o painel' }, { status: 403 })
+    }
+
+    const rows = await sql`
+      SELECT
+        c.id as company_id, c.name as company_name,
+        cf.id as form_id, cf.title as form_title, cf.status as form_status,
+        COUNT(DISTINCT fr.admin_user_id) as total_recipients,
+        COUNT(DISTINCT resp.admin_user_id) FILTER (WHERE resp.status = 'completed') as completed_count
+      FROM companies c
+      JOIN company_forms cf ON cf.company_id = c.id
+      LEFT JOIN form_recipients fr ON fr.form_id = cf.id
+      LEFT JOIN form_responses resp ON resp.form_id = cf.id AND resp.admin_user_id = fr.admin_user_id
+      GROUP BY c.id, c.name, cf.id, cf.title, cf.status, cf.created_at
+      ORDER BY c.name ASC, cf.created_at DESC
+    `
+
+    return NextResponse.json(rows)
+  } catch (error) {
+    console.error('Get dashboard error:', error)
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
-
-  const rows = await sql`
-    SELECT
-      c.id as company_id, c.name as company_name,
-      a.id as area_id, a.name as area_name,
-      COUNT(DISTINCT au.id) as total_area_admins,
-      COUNT(DISTINCT e.admin_user_id) FILTER (WHERE e.status = 'completed') as completed_count
-    FROM companies c
-    JOIN company_areas ca ON ca.company_id = c.id
-    JOIN areas a ON a.id = ca.area_id
-    LEFT JOIN admin_users au ON au.area_id = a.id AND au.role = 'area_admin'
-    LEFT JOIN evaluations e ON e.company_id = c.id AND e.area_id = a.id
-    GROUP BY c.id, c.name, a.id, a.name
-    ORDER BY c.name ASC, a.name ASC
-  `
-
-  return NextResponse.json(rows)
 }

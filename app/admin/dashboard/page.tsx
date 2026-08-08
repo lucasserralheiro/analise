@@ -12,8 +12,8 @@ const fetcher = (url: string) => fetch(url).then(res => {
 
 interface Row {
   company_id: string; company_name: string
-  area_id: string; area_name: string
-  total_area_admins: string; completed_count: string
+  form_id: string; form_title: string; form_status: 'draft' | 'sent'
+  total_recipients: string; completed_count: string
 }
 
 export default function DashboardPage() {
@@ -21,9 +21,9 @@ export default function DashboardPage() {
   const { data } = useSWR<Row[]>('/api/dashboard', fetcher)
   const rows = Array.isArray(data) ? data : []
 
-  const grouped = rows.reduce<Record<string, { company_name: string; areas: Row[] }>>((acc, row) => {
-    if (!acc[row.company_id]) acc[row.company_id] = { company_name: row.company_name, areas: [] }
-    acc[row.company_id].areas.push(row)
+  const grouped = rows.reduce<Record<string, { company_name: string; forms: Row[] }>>((acc, row) => {
+    if (!acc[row.company_id]) acc[row.company_id] = { company_name: row.company_name, forms: [] }
+    acc[row.company_id].forms.push(row)
     return acc
   }, {})
 
@@ -38,37 +38,36 @@ export default function DashboardPage() {
         Painel de Acompanhamento
       </h1>
 
-      <div className="space-y-6">
-        {Object.entries(grouped).map(([companyId, { company_name, areas }]) => (
-          <div key={companyId} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <Link href={`/admin/companies/${companyId}`} className="font-semibold text-lg hover:text-indigo-600">
-              {company_name}
-            </Link>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
-              {areas.map(area => {
-                const total = Number(area.total_area_admins)
-                const done = Number(area.completed_count)
-                const status = total === 0 ? 'sem-admin' : done === 0 ? 'nao-iniciado' : done < total ? 'andamento' : 'concluido'
-                const colors: Record<string, string> = {
-                  'sem-admin': 'bg-gray-100 text-gray-500 border-gray-200',
-                  'nao-iniciado': 'bg-red-50 text-red-700 border-red-200',
-                  'andamento': 'bg-amber-50 text-amber-700 border-amber-200',
-                  'concluido': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                }
-                return (
-                  <div key={area.area_id} className={`rounded-lg border px-3 py-2 text-sm ${colors[status]}`}>
-                    <p className="font-medium">{area.area_name}</p>
-                    <p className="text-xs">{done}/{total} concluíram</p>
-                  </div>
-                )
-              })}
+      {Object.keys(grouped).length === 0 ? (
+        <p className="text-muted-foreground">Nenhum formulário criado ainda.</p>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(grouped).map(([companyId, { company_name, forms }]) => (
+            <div key={companyId} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">{company_name}</h2>
+              <div className="space-y-2">
+                {forms.map(form => {
+                  const total = Number(form.total_recipients)
+                  const completed = Number(form.completed_count)
+                  const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+                  return (
+                    <Link
+                      key={form.form_id}
+                      href={`/admin/companies/${companyId}/forms/${form.form_id}`}
+                      className="flex items-center justify-between text-sm px-3 py-2 rounded-lg hover:bg-gray-50"
+                    >
+                      <span className="text-gray-700">{form.form_title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {form.form_status === 'draft' ? 'Rascunho' : `${completed}/${total} (${pct}%)`}
+                      </span>
+                    </Link>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-        {Object.keys(grouped).length === 0 && (
-          <p className="text-muted-foreground text-sm">Nenhuma empresa com áreas envolvidas ainda.</p>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
