@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Building2 } from 'lucide-react'
-import { useAuth } from '@/components/auth-context'
 
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error('Failed')
@@ -30,17 +29,13 @@ export default function CompanyLayout({
   const { id } = use(params)
   const router = useRouter()
   const pathname = usePathname()
-  const { user } = useAuth()
 
   const { data: company } = useSWR<Company>(`/api/companies/${id}`, fetcher)
 
   const tabs = [
     { href: `/admin/companies/${id}`, label: 'Visão Geral' },
     { href: `/admin/companies/${id}/documents`, label: 'Documentos' },
-    { href: `/admin/companies/${id}/results`, label: 'Resultados' },
-    ...(user?.role === 'area_admin'
-      ? [{ href: `/admin/companies/${id}/evaluate`, label: 'Avaliar' }]
-      : []),
+    { href: `/admin/companies/${id}/forms`, label: 'Formulários' },
   ]
 
   if (!company) {
