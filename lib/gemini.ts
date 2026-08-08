@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai'
+import { GoogleGenAI, type Part } from '@google/genai'
 
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
 
@@ -16,11 +16,18 @@ export async function generateWithGemini(
   }
 
   const ai = new GoogleGenAI({})
-  const interaction = await ai.interactions.create({
+
+  const parts: Part[] = input.map(part =>
+    part.type === 'text'
+      ? { text: part.text }
+      : { inlineData: { data: part.data, mimeType: part.mime_type } }
+  )
+
+  const response = await ai.models.generateContent({
     model: MODEL,
-    system_instruction: systemInstruction,
-    input,
+    contents: [{ role: 'user', parts }],
+    config: systemInstruction ? { systemInstruction } : undefined,
   })
 
-  return interaction.output_text ?? ''
+  return response.text ?? ''
 }
